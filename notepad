@@ -90,3 +90,249 @@ bitcoin-qt
 服务端
 bitcoind  -server -printtoconcole
  6.修改源码
+
+
+
+
+多节点FastCoin山寨币的搭建
+ 发表于 Apr 8 2018 |  0 comments |  阅读次数 157
+这篇文章给出了Fastcoin多节点环境的搭建文档，FastCoin是一个由@harrywu修改BitCoin源代码产生的一个简单的山寨币。该山寨币在原有BitCoin源码基础上，对BitCoin相关网络参数、创世块信息、工作量机制等进行了修改，从而构建出了一个简单的山寨币系统，该系统加快了原有的挖矿速度，能够更方便的进行区块链开发的相关测试。
+
+1 FastCoin简介
+FastCoin是一个由@harrywu修改BitCoin源代码产生的一个简单的山寨币。该山寨币在原有BitCoin源码基础上，对BitCoin相关网络参数、创世块信息、工作量机制等进行了修改，从而构建出了一个简单的山寨币系统，该系统加快了原有的挖矿速度，能够更方便的进行区块链开发的相关测试。
+
+2 系统环境
+该文档的采用了两个节点进行测试，两个节点的系统环境如下：
+
+OS: Ubuntu
+Linux Kernel: Linux 4.4.0
+Memory: 1G
+gcc Version: 5.4.0
+g++ Version: 5.4.0
+3 安装准备
+该文档采用两个节点对FastCoin山寨币进行搭建，两个节点做同样的配置。
+
+3.1 获取FastCoin源码
+git clone https://github.com/imharrywu/fastcoin.git
+3.2 安装项目构建依赖
+sudo apt-get install build-essential libtool autotools-dev autoconf pkg-config libssl-dev
+3.3 安装Berkeley DB 4.8
+cd fastcoin/
+BITCOIN_ROOT=$(pwd)
+
+# 选择 Berkeley DB安装路径，此处为fastcoin子目录下
+BDB_PREFIX="${BITCOIN_ROOT}/db4"
+mkdir -p $BDB_PREFIX
+
+# 获取源码
+wget 'http://download.oracle.com/berkeley-db/db-4.8.30.NC.tar.gz'
+
+# 校验
+echo '12edc0df75bf9abd7f82f821795bcee50f42cb2e5f76a6a281b85732798364ef  db-4.8.30.NC.tar.gz' | sha256sum -c
+
+# 输出结应该为： -> db-4.8.30.NC.tar.gz: OK
+
+# 解压
+tar -xzvf db-4.8.30.NC.tar.gz
+
+# 构建安装
+cd db-4.8.30.NC/build_unix/
+../dist/configure --enable-cxx --disable-shared --with-pic --prefix=$BDB_PREFIX
+make install
+3.4 安装Boost
+sudo apt-get install libboost-all-dev
+3.5 安装miniupnp
+wget http://miniupnp.tuxfamily.org/files/download.php?file=miniupnpc-1.6.20120410.tar.gz
+tar -xzvf miniupnpc-1.6.20120410.tar.gz
+cd miniupnpc-1.6
+make
+sudo make install
+也可以使用Ubuntu源进行安装：
+
+sudo apt-get install libminiupnpc-dev
+4 搭建过程
+4.1 编译源码
+./autogen.sh
+./configure --with-miniupnpc --without-gui --enable-upnp-default LDFLAGS="-L${BDB_PREFIX}/lib/" CPPFLAGS="-I${BDB_PREFIX}/include/" --enable-wallet
+make
+make install
+编译安装之后，在src目录下会生成相应的二进制文件，主要用到的二进制文件有：
+
+bitcoind：fastcoin主程序
+bitcoin-cli：fastcoin RPC控制台程序
+如果在编译过程中遭遇如下报错信息，详见【6.1 Boost依赖库引起的报错】：
+
+/usr/include/boost/variant/get.hpp:178:5: error: invalid application of 'sizeof' to incomplete type 'boost::STATIC_ASSERTION_FAILURE<false>'
+     BOOST_STATIC_ASSERT_MSG(
+     ^
+Makefile:3654: recipe for target 'libbitcoin_server_a-rpcrawtransaction.o' failed
+make[2]: *** [libbitcoin_server_a-rpcrawtransaction.o] Error 1
+4.2 相关configuration参数
+--without-gui：不使用GUI，如果需要图形化界面，详见【6.6 图形化界面钱包的构建】
+--enable-wallet:启用钱包（不启用钱包--disable-wallet也可以进行挖矿，如果不启用钱包，则无需安装Berkeley DB）
+--enable-debug:启用debug模式
+--enable-tests:对测试程序进行编译
+CPPFLAGS、LDFLAGS：指定Berkeley DB的路径
+5 FastCoin测试
+5.1 FastCoin配置文件
+vi ~/.fastcoin/fastcoin.conf
+在fastcoin.conf文件中添加如下配置信息：
+
+# 用户名
+rpcuser=user
+# 密码
+rpcpassword=password
+
+daemon=1
+txindex=1
+server=1
+5.2 启动bitcoind
+在其中一个节点中执行：
+
+cd fastcoin/src
+./bincoind -gen=1 -reindex -checkpoints=0
+另一个节点执行：
+
+./bincoind -gen=1 -reindex -checkpoints=0 -addnode="另一个节点的IP，例：192.169.1.233"
+5.3 bitcoind相关启动参数
+-rpcuser=：指定用户名
+-rpcpassword=：指定密码
+-daemon=：bitcoind作为daemon进程在后台运行
+-gen=：生成山寨币（挖矿）
+-addnode=：添加节点
+-reindex：bitcoind启动时从当前blk000??.dat文件中的index重建区块链
+-server：启用RPC服务器
+5.4 bitcoin-cli
+使用./bitcoin-cli <parameters>可以查看当前区块链、网络、钱包等信息。
+
+相关参数有：
+
+== Blockchain ==
+getbestblockhash
+getblock "hash" ( verbose )
+getblockchaininfo
+getblockcount
+getblockhash index
+getchaintips
+getdifficulty
+getmempoolinfo
+getrawmempool ( verbose )
+gettxout "txid" n ( includemempool )
+gettxoutsetinfo
+verifychain ( checklevel numblocks )
+
+== Control ==
+getinfo
+help ( "command" )
+stop
+
+== Generating ==
+getgenerate
+setgenerate generate ( genproclimit )
+
+== Mining ==
+getblocktemplate ( "jsonrequestobject" )
+getmininginfo
+getnetworkhashps ( blocks height )
+prioritisetransaction <txid> <priority delta> <fee delta>
+submitblock "hexdata" ( "jsonparametersobject" )
+
+== Network ==
+addnode "node" "add|remove|onetry"
+getaddednodeinfo dns ( "node" )
+getconnectioncount
+getnettotals
+getnetworkinfo
+getpeerinfo
+ping
+
+== Rawtransactions ==
+createrawtransaction [{"txid":"id","vout":n},...] {"address":amount,...}
+decoderawtransaction "hexstring"
+decodescript "hex"
+getrawtransaction "txid" ( verbose )
+sendrawtransaction "hexstring" ( allowhighfees )
+signrawtransaction "hexstring" ( [{"txid":"id","vout":n,"scriptPubKey":"hex","redeemScript":"hex"},...] ["privatekey1",...] sighashtype )
+
+== Util ==
+createmultisig nrequired ["key",...]
+estimatefee nblocks
+estimatepriority nblocks
+validateaddress "fastcoinaddress"
+verifymessage "fastcoinaddress" "signature" "message"
+
+== Wallet ==
+addmultisigaddress nrequired ["key",...] ( "account" )
+backupwallet "destination"
+dumpprivkey "fastcoinaddress"
+dumpwallet "filename"
+encryptwallet "passphrase"
+getaccount "fastcoinaddress"
+getaccountaddress "account"
+getaddressesbyaccount "account"
+getbalance ( "account" minconf includeWatchonly )
+getnewaddress ( "account" )
+getrawchangeaddress
+getreceivedbyaccount "account" ( minconf )
+getreceivedbyaddress "fastcoinaddress" ( minconf )
+gettransaction "txid" ( includeWatchonly )
+getunconfirmedbalance
+getwalletinfo
+importaddress "address" ( "label" rescan )
+importprivkey "fastcoinprivkey" ( "label" rescan )
+importwallet "filename"
+keypoolrefill ( newsize )
+listaccounts ( minconf includeWatchonly)
+listaddressgroupings
+listlockunspent
+listreceivedbyaccount ( minconf includeempty includeWatchonly)
+listreceivedbyaddress ( minconf includeempty includeWatchonly)
+listsinceblock ( "blockhash" target-confirmations includeWatchonly)
+listtransactions ( "account" count from includeWatchonly)
+listunspent ( minconf maxconf  ["address",...] )
+lockunspent unlock [{"txid":"txid","vout":n},...]
+move "fromaccount" "toaccount" amount ( minconf "comment" )
+sendfrom "fromaccount" "tofastcoinaddress" amount ( minconf "comment" "comment-to" )
+sendmany "fromaccount" {"address":amount,...} ( minconf "comment" )
+sendtoaddress "fastcoinaddress" amount ( "comment" "comment-to" )
+setaccount "fastcoinaddress" "account"
+settxfee amount
+signmessage "fastcoinaddress" "message"
+具体的RPC调用可以参考BitCoin RPC API文档。
+
+6 注意事项
+6.1 Boost依赖库引起的报错
+如果在编译FastCoin源码过程中遭遇如下报错信息，则需要我们对FastCoin源码进行修改：
+
+/usr/include/boost/variant/get.hpp:178:5: error: invalid application of 'sizeof' to incomplete type 'boost::STATIC_ASSERTION_FAILURE<false>'
+     BOOST_STATIC_ASSERT_MSG(
+     ^
+Makefile:3654: recipe for target 'libbitcoin_server_a-rpcrawtransaction.o' failed
+make[2]: *** [libbitcoin_server_a-rpcrawtransaction.o] Error 1
+将src/rpcrawtransaction.c文件中的第288行：
+
+const CScriptID& hash = boost::get<const CScriptID&>(address);
+修改为：
+
+const CScriptID& hash = boost::get<CScriptID>(address);
+6.2 Berkeley DB安装问题
+如果不想对Berkeley DB的源码进行编译安装，还可以直接采用Debian源进行安装：
+
+sudo add-apt-repository ppa:bitcoin/bitcoin
+sudo apt-get update
+sudo apt-get install libdb4.8-dev libdb4.8++-dev
+6.3 nTXConfirmTarget参数
+该参数是确认目标值，用于计算矿工费用，默认值为1，适用于双节点的系统，如需对该参数进行修改。可以在执行./bitcoind时添加参数-txconfirmtarget=number进行配置。
+
+6.4 txindex参数问题
+如果在~/.fastcoin/fastcoin.conf配置文件中添加了txindex参数，则需要在启动bitcoind时添加启动参数—reindex。
+
+6.5 图形化界面钱包的构建
+如需使用图形化界面的钱包，需要安装QT并且在./congfiguration时不使用--without-gui选项，FastCoin默认使用QT4：
+
+sudo apt-get install libqt4-dev libprotobuf-dev protobuf-compiler
+如需使用QT5，需要采用--with-gui=qt5选项，并安装QT5：
+
+sudo apt-get install libqt5gui5 libqt5core5a libqt5dbus5 qttools5-dev qttools5-dev-tools libprotobuf-dev protobuf-compiler
+本文的版权归作者 罗远航 所有，采用 Attribution-NonCommercial 3.0 License。任何人可以进行转载、分享，但不可在未经允许的情况下用于商业用途；转载请注明出处。感谢配合！
+
