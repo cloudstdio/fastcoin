@@ -1,0 +1,92 @@
+开个深坑，比特币之山寨币开发
+
+1.目前的资料：
+http://blog.csdn.net/wolfoxkao
+http://lib.csdn.net/article/blockchain/45844
+http://blog.csdn.net/hacode
+https://www.jianshu.com/p/6827e958e47f
+完整的bitcoin安装blog：https://www.cnblogs.com/wintersun/p/3813424.html
+动手编译比特币源码：http://book.51cto.com/art/201711/558953.htm
+2.当前计划
+　　（1）fastcoin，用的是autotool风格的开发方式，夹杂eclipse的开发工具。因此，我们要学习下emacs的使用，这个一直没有搞定的事情。
+　　（2）按照教程，修改参数，跑起来程序，并gitee存档。
+　　（3）落地到本地集群，并修改开源描述，删除多余项。
+3.正式操作
+　　1.emacs
+　　　　学会第一个操作是撤销，ctrl-/。
+　　　　上下翻屏幕是ctrl-v，alt-v，和正常的很不一样。
+　　　　打开文件用ctrl-x ctrl-f，按两次，会定位到home下执行查找。ctrl-x ctrl-s执行保存。
+　　　　貌似没有关闭的按键，通过不断打开新的来切换窗口。ctrl-x +左右，切换前后。
+ 
+ 4.编译源码(重新更改此节，分为2部分，fastcoin项目，与bitcoin已更新的最新代码)
+首先，ubuntu的版本是非常需要关注的，我在ubuntu14下成功了（一开始是ubuntu16，后来出现了非常多的依赖错误，aptitude也搞不定），下载源码
+git clone https://github.com/imharrywu/fastcoin
+从fastcoin开始，执行./autogen.sh之后，出现报错：libdb_cxx headers missing，百度后找到解释，是berkeleyDB未安装。打开官网oracle下载，提示需要注册。
+参考https://www.jianshu.com/p/6827e958e47f中的方法，使用wget下载数据库。参考了这两篇文章：
+http://blog.csdn.net/wolfoxkao/article/details/78709410
+https://www.jianshu.com/p/8b4ebd0e4b3d
+先定位到fastcoin目录下，把db下载到这里。
+wget 'http://download.oracle.com/berkeley-db/db-4.8.30.NC.tar.gz' 
+tar zxvf db-4.8.30.NC.tar.gz
+cd db-4.8.30.NC/build_unix/
+../dist/configure --enable-cxx --disable-shared --with-pic --prefix=/home/ubuntu/fastcoin/db4/
+make
+sudo make install
+此时，在进行真正源码编译之前，需要先解决依赖问题。（我在ubuntu16下，利用altitude来解决boost和gui的依赖问题，但是仍然问题重重。更换了ubuntu14之后，一次依赖问题都没遇到，十分顺畅。。）
+执行下面命令，分别是db、boost、qt、openssl、还有其它各种的依赖包，尤其在ubuntu16这样的高版本上较难搞，14.10版本直接成功。
+sudo apt-get install libdb5.1++-dev
+sudo apt-get install libdb-dev libdb++-dev
+sudo apt-get install libboost-all-dev
+sudo apt-get install libqt4-core libqt4-gui libqt4-dev
+sudo apt-get install libssl-dev
+sudo apt-get install build-essential libtool autotools-dev autoconf pkg-config libssl-dev libevent-dev libboost-all-dev libminiupnpc-dev libqt4-dev libprotobuf-de protobuf-compiler libqrencode-dev
+sudo ./autogen.sh
+sudo ./configure LDFLAGS="-L/home/ubuntu/fastcoin/db4/lib/" CPPFLAGS="-I/home/ubuntu/fastcoin/db4/include/"
+有时会报错，4.8版本BDB的问题(一定注意引号中的地址)，但在ubuntu14上一遍成功。
+http://book.51cto.com/art/201711/558953.htm
+>./configure LDFLAGS="-L/home/ubuntu/fastcoin/db4/lib/" CPPFLAGS="-I/home/ubuntu/fastcoin/db4/include/" --with-incompatible-bdb
+ -------------------------------------------------------------
+我在安装整个过程中遇到了一个非常值得注意的错误，尤其出现在安装qt-gui和libboost-all-dev上。尝试用aptitude来更改包，然而连sudo apt-get install aptitude也在报错。
+ubuntu@ubuntu-ThinkPad-X240:~/bitcoin$ sudo apt-get install aptitude 正在读取软件包列表... 完成 正在分析软件包的依赖关系树        正在读取状态信息... 完成        有一些软件包无法被安装。如果您用的是 unstable 发行版，这也许是 因为系统无法达到您要求的状态造成的。该版本中可能会有一些您需要的软件 包尚未被创建或是它们已被从新到(Incoming)目录移出。 下列信息可能会对解决问题有所帮助：  下列软件包有未满足的依赖关系：  aptitude : 依赖: libcwidget3 但是它将不会被安装             依赖: libsigc++-2.0-0c2a (>= 2.0.2) 但是它将不会被安装             依赖: libxapian22 但是它将不会被安装 E: 无法修正错误，因为您要求某些软件包保持现状，就是它们破坏了软件包间的依赖关系。  
+解决方法是：打开 系统设置-》软件和更新-》ubuntu软件 tab-》可从互联网下载，下面的框框全部挑上。
+>sudo aptitude install libboost-all-dev 
+先选n，会出现第二种处理方式，选择第二种的降级方式。然后再执行./configure........那句，之后即可执行make。
+-------------------------------------------------------------
+sudo make
+sudo make install
+ 到此，fastcoin编译完成，可通过下列指令执行
+前端
+bitcoin-qt
+服务端
+bitcoind  -server -printtoconcole
+ 
+5.编译bitcoin代码，本机ubuntu16.04 64bit，用户名ubuntu，使用berkeley-db6。
+5.1下载bitcoin
+cd ~
+git clone https://github.com/bitcoin/bitcoin.git
+5.2下载安装db6
+cd bitcoin
+wget 'http://download.oracle.com/berkeley-db/db-6.2.32.NC.tar.gz'
+tar -xzvf db-6.2.32.NC.tar.gz
+cd db-6.2.32.NC/build_unix/
+../dist/configure --enable-cxx --disable-shared --with-pic --prefix=/home/ubuntu/bitcoin/db6/
+sudo make install
+5.3编译安装
+cd ~/bitcoin/
+./autogen.sh
+./configure LDFLAGS="-L/home/ubuntu/bitcoin/db6/lib/" CPPFLAGS="-I/home/ubuntu/bitcoin/db6/include/" --with-incompatible-bdb
+sudo make
+sudo make install
+5.4证明安装成功，通过以下命令行进行验证：
+$ which bitcoind
+/usr/local/bin/bitcoind
+$ which bitcoin-cli
+/usr/local/bin/bitcoin-cli
+如果有类似上述的输出，就完成了进入比特币源码世界的第一步了。
+5.5运行程序，定位到我们的根目录下，～/jincoin/
+上传了两天github都没上去，坑，转用gitee。
+运行前端
+bitcoin-qt
+服务端
+bitcoind  -server -printtoconcole
+ 6.修改源码
