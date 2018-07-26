@@ -190,10 +190,13 @@ server=1
 在其中一个节点中执行：
 
 cd fastcoin/src
-./bincoind -gen=1 -reindex -checkpoints=0
+./bitcoind -gen=1 -reindex -checkpoints=0
 另一个节点执行：
 
-./bincoind -gen=1 -reindex -checkpoints=0 -addnode="另一个节点的IP，例：192.169.1.233"
+./bitcoind -gen=1 -reindex -checkpoints=0 -addnode="192.168.56.101"
+
+
+另一个节点的IP，例：192.169.1.233"
 5.3 bitcoind相关启动参数
 -rpcuser=：指定用户名
 -rpcpassword=：指定密码
