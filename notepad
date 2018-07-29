@@ -339,6 +339,10 @@ sudo apt-get install libqt4-dev libprotobuf-dev protobuf-compiler
 sudo apt-get install libqt5gui5 libqt5core5a libqt5dbus5 qttools5-dev qttools5-dev-tools libprotobuf-dev protobuf-compiler
 本文的版权归作者 罗远航 所有，采用 Attribution-NonCommercial 3.0 License。任何人可以进行转载、分享，但不可在未经允许的情况下用于商业用途；转载请注明出处。感谢配合！
 
+./autogen.sh
+./configure --with-miniupnpc  --enable-upnp-default LDFLAGS="-L${BDB_PREFIX}/lib/" CPPFLAGS="-I${BDB_PREFIX}/include/" --enable-wallet
+make
+make install
 
 cd fastcoin/src
 ./bitcoind -gen=1 -reindex -checkpoints=0
